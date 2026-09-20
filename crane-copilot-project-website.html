@@ -1,0 +1,682 @@
+
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Crane Copilot — AI Safety System</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:      #ffffff;
+    --surface: #f7f8fa;
+    --border:  #e5e7eb;
+    --text:    #1f2328;
+    --muted:   #57606a;
+    --accent:  #3b82d4;
+    --purple:  #7c5cd8;
+    --red:     #dc2626;
+    --green:   #16a34a;
+    --yellow:  #ca8a04;
+  }
+
+  body {
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+    font-size: 14px; line-height: 1.65;
+    background: var(--bg); color: var(--text);
+  }
+
+  /* ── HERO ── */
+  .hero {
+    background: #0f172a;
+    color: #f1f5f9;
+    padding: 64px 24px 56px;
+    text-align: center;
+  }
+  .hero-badge {
+    display: inline-block;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 12px;
+    color: #94a3b8;
+    margin-bottom: 20px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .hero h1 {
+    font-size: 36px;
+    font-weight: 700;
+    color: #f8fafc;
+    margin-bottom: 10px;
+    letter-spacing: -0.5px;
+  }
+  .hero h1 span { color: #60a5fa; }
+  .hero p {
+    font-size: 16px;
+    color: #94a3b8;
+    max-width: 560px;
+    margin: 0 auto 32px;
+  }
+  .hero-stats {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    flex-wrap: wrap;
+    margin-top: 32px;
+  }
+  .hero-stat { text-align: center; }
+  .hero-stat .num {
+    font-size: 28px;
+    font-weight: 700;
+    color: #f8fafc;
+    display: block;
+  }
+  .hero-stat .lbl {
+    font-size: 12px;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* ── LAYOUT ── */
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 24px; }
+  section { padding: 52px 24px; }
+  section:nth-child(even) { background: var(--surface); }
+
+  h2 {
+    font-size: 20px; font-weight: 700;
+    margin-bottom: 6px;
+    color: var(--text);
+  }
+  .section-sub {
+    font-size: 13px; color: var(--muted);
+    margin-bottom: 28px;
+  }
+
+  /* ── CARDS ── */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+  }
+  .card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+  }
+  .card-icon {
+    font-size: 22px;
+    margin-bottom: 10px;
+    display: block;
+  }
+  .card h3 {
+    font-size: 13px; font-weight: 700;
+    margin-bottom: 6px;
+    color: var(--text);
+  }
+  .card p {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.55;
+  }
+
+  /* ── PIPELINE ── */
+  .pipeline {
+    display: flex;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 0;
+    margin-top: 8px;
+  }
+  .pipe-step {
+    flex: 1;
+    min-width: 130px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    position: relative;
+  }
+  .pipe-step + .pipe-step { margin-left: 10px; }
+  .pipe-step::before {
+    content: '→';
+    position: absolute;
+    left: -14px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    font-size: 16px;
+    pointer-events: none;
+  }
+  .pipe-step:first-child::before { display: none; }
+  .pipe-num {
+    display: inline-block;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-size: 11px; font-weight: 700;
+    text-align: center; line-height: 20px;
+    margin-bottom: 8px;
+  }
+  .pipe-step h4 { font-size: 12px; font-weight: 700; margin-bottom: 3px; }
+  .pipe-step p  { font-size: 11px; color: var(--muted); }
+
+  /* ── TABLE ── */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 16px; }
+  th {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 8px 12px;
+    text-align: left; font-weight: 600;
+  }
+  td { border: 1px solid var(--border); padding: 7px 12px; vertical-align: top; }
+  tr:nth-child(even) td { background: #fafafa; }
+
+  /* ── RISK BADGES ── */
+  .badge {
+    display: inline-block;
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 0.03em;
+  }
+  .b-safe     { background: #dcfce7; color: #15803d; }
+  .b-warn     { background: #fef9c3; color: #92400e; }
+  .b-crit     { background: #fed7aa; color: #9a3412; }
+  .b-imm      { background: #fee2e2; color: #991b1b; }
+
+  /* ── METRICS ── */
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin-top: 4px;
+  }
+  .metric-box {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 18px;
+    text-align: center;
+  }
+  .metric-box .val {
+    font-size: 24px; font-weight: 700;
+    color: var(--accent);
+    display: block;
+  }
+  .metric-box .lbl {
+    font-size: 11px; color: var(--muted);
+    margin-top: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  /* ── CODE BLOCK ── */
+  .code-block {
+    background: #0f172a;
+    border-radius: 8px;
+    padding: 18px 20px;
+    font-family: "Consolas", monospace;
+    font-size: 12px;
+    color: #e2e8f0;
+    line-height: 1.7;
+    margin-top: 16px;
+    overflow-x: auto;
+  }
+  .code-block .cm  { color: #64748b; }
+  .code-block .kw  { color: #93c5fd; }
+  .code-block .fn  { color: #86efac; }
+  .code-block .st  { color: #fde68a; }
+
+  /* ── IMPROVEMENTS ── */
+  .imp-list { list-style: none; padding: 0; margin-top: 12px; }
+  .imp-list li {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .imp-list li:last-child { border-bottom: none; }
+  .imp-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    margin-top: 5px; flex-shrink: 0;
+  }
+  .dot-red    { background: #ef4444; }
+  .dot-yellow { background: #eab308; }
+  .dot-green  { background: #22c55e; }
+  .imp-list strong { font-weight: 600; }
+  .imp-list span   { color: var(--muted); font-size: 12px; }
+
+  /* ── SVG BAR CHART ── */
+  .chart-wrap { margin-top: 20px; }
+  .bar-label { font-size: 12px; fill: var(--muted); }
+  .bar-value { font-size: 11px; fill: var(--text); font-weight: 600; }
+
+  footer {
+    padding: 28px 24px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+  }
+</style>
+</head>
+<body>
+
+
+<div class="hero">
+  <div class="hero-badge">AI Safety Research</div>
+  <h1>🏗️ Crane <span>Copilot</span></h1>
+  <p>An AI-powered crane safety system combining deep reinforcement learning, LSTM forecasting, and a real-time early warning layer to prevent crane tipping accidents.</p>
+
+  <div class="hero-stats">
+    <div class="hero-stat">
+      <span class="num">1,000</span>
+      <span class="lbl">Training Episodes</span>
+    </div>
+    <div class="hero-stat">
+      <span class="num">938K</span>
+      <span class="lbl">Sensor Rows</span>
+    </div>
+    <div class="hero-stat">
+      <span class="num">1M</span>
+      <span class="lbl">PPO Timesteps</span>
+    </div>
+    <div class="hero-stat">
+      <span class="num">500ms</span>
+      <span class="lbl">Warning Lead Time</span>
+    </div>
+    <div class="hero-stat">
+      <span class="num">4</span>
+      <span class="lbl">Risk Levels</span>
+    </div>
+  </div>
+</div>
+
+
+
+<section>
+<div class="wrap">
+  <h2>What is Crane Copilot?</h2>
+  <p class="section-sub">Three cooperating AI layers working together to keep a tower crane stable under dynamic wind and load conditions.</p>
+
+  <div class="card-grid">
+    <div class="card">
+      <span class="card-icon">🎮</span>
+      <h3>PPO RL Agent</h3>
+      <p>A Proximal Policy Optimisation agent continuously controls the trolley position to maximise the crane's stability reserve — even under sudden wind gusts.</p>
+    </div>
+    <div class="card">
+      <span class="card-icon">📈</span>
+      <h3>LSTM Forecasting</h3>
+      <p>Two LSTM networks predict structural tilt and stability margin ratio 500 ms – 1 second into the future using a 5-second sensor history window.</p>
+    </div>
+    <div class="card">
+      <span class="card-icon">🚨</span>
+      <h3>Early Warning System</h3>
+      <p>A hybrid risk classifier combines LSTM predictions with current physics to raise SAFE / WARNING / CRITICAL / IMMINENT alerts with hysteresis debouncing.</p>
+    </div>
+    <div class="card">
+      <span class="card-icon">⚙️</span>
+      <h3>Physics Simulation</h3>
+      <p>A forced damped pendulum model with Ornstein-Uhlenbeck wind, overturning/restoring moments, dynamic structural tilt, and real-time stability margin.</p>
+    </div>
+  </div>
+</div>
+</section>
+
+
+
+<section>
+<div class="wrap">
+  <h2>System Pipeline</h2>
+  <p class="section-sub">From raw physics simulation to trained AI models and real-time risk assessment.</p>
+
+  <div class="pipeline">
+    <div class="pipe-step">
+      <div class="pipe-num">1</div>
+      <h4>generate_dataset.py</h4>
+      <p>1,000 episodes × 4 scenarios → 938K sensor rows</p>
+    </div>
+    <div class="pipe-step">
+      <div class="pipe-num">2</div>
+      <h4>train_lstm.py</h4>
+      <p>Tilt LSTM — 5 s history → 1 s tilt forecast</p>
+    </div>
+    <div class="pipe-step">
+      <div class="pipe-num">3</div>
+      <h4>train_risk_lstm.py</h4>
+      <p>Risk LSTM — predicts margin_ratio at +500 ms</p>
+    </div>
+    <div class="pipe-step">
+      <div class="pipe-num">4</div>
+      <h4>train_ppo.py</h4>
+      <p>PPO agent — 1M steps, 8 parallel envs</p>
+    </div>
+    <div class="pipe-step">
+      <div class="pipe-num">5</div>
+      <h4>early_warning.py</h4>
+      <p>Risk layer — inference + hysteresis smoothing</p>
+    </div>
+  </div>
+</div>
+</section>
+
+
+
+<section>
+<div class="wrap">
+  <h2>Physics Model</h2>
+  <p class="section-sub">Every timestep (20 ms) the simulator solves a full mechanical model of the crane.</p>
+
+  <table>
+    <tr><th>Component</th><th>Model</th><th>Key Parameters</th></tr>
+    <tr>
+      <td><strong>Load swing</strong></td>
+      <td>Forced damped pendulum — θ̈ = -(g/L)sin θ - (c/mL²)θ̇ + (F_wind/mL)cos θ</td>
+      <td>Cable 15 m, damping 0.15</td>
+    </tr>
+    <tr>
+      <td><strong>Wind</strong></td>
+      <td>Ornstein-Uhlenbeck mean-reversion + random gust events</td>
+      <td>θ=0.5, σ=1.5, gust prob 1%</td>
+    </tr>
+    <tr>
+      <td><strong>Structural tilt</strong></td>
+      <td>2nd-order spring-damper driven by moment ratio</td>
+      <td>ω_n=2.0 rad/s, ζ=0.7</td>
+    </tr>
+    <tr>
+      <td><strong>Overturning moment</strong></td>
+      <td>M = m·g·x_load + F_wind·h_crane</td>
+      <td>Crane height 50 m</td>
+    </tr>
+    <tr>
+      <td><strong>Stability margin</strong></td>
+      <td>M_restore − |M_overturn|  →  ≤ 0 = tipping</td>
+      <td>Crane mass 100,000 kg, base 10 m</td>
+    </tr>
+  </table>
+</div>
+</section>
+
+
+
+<section>
+<div class="wrap">
+  <h2>Dataset</h2>
+  <p class="section-sub">4 scenario families with diverse operating conditions to train robust LSTM models.</p>
+
+  <div class="chart-wrap">
+    <svg xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:760px">
+      
+      
+      <rect x="60" y="30" width="237" height="32" rx="4" fill="#3b82d4" opacity="0.85"></rect>
+      <text x="305" y="51" class="bar-value">337 episodes (33.7%)</text>
+      <text x="54" y="51" text-anchor="end" class="bar-label">Safe</text>
+
+      
+      <rect x="60" y="72" width="263" height="32" rx="4" fill="#eab308" opacity="0.85"></rect>
+      <text x="331" y="93" class="bar-value">373 episodes (37.3%)</text>
+      <text x="54" y="93" text-anchor="end" class="bar-label">Critical</text>
+
+      
+      <rect x="60" y="114" width="129" height="32" rx="4" fill="#ef4444" opacity="0.85"></rect>
+      <text x="197" y="135" class="bar-value">183 episodes (18.3%)</text>
+      <text x="54" y="135" text-anchor="end" class="bar-label">High Risk</text>
+
+      
+      <rect x="60" y="156" width="75" height="32" rx="4" fill="#7c5cd8" opacity="0.85"></rect>
+      <text x="143" y="177" class="bar-value">107 episodes (10.7%)</text>
+      <text x="54" y="177" text-anchor="end" class="bar-label">Extreme Wind</text>
+    </svg>
+  </div>
+
+  <div class="metrics-grid" style="margin-top:24px">
+    <div class="metric-box">
+      <span class="val">938,317</span>
+      <span class="lbl">Total sensor rows</span>
+    </div>
+    <div class="metric-box">
+      <span class="val">82</span>
+      <span class="lbl">Tipping episodes</span>
+    </div>
+    <div class="metric-box">
+      <span class="val">26</span>
+      <span class="lbl">CSV columns</span>
+    </div>
+    <div class="metric-box">
+      <span class="val">330 MB</span>
+      <span class="lbl">Dataset size</span>
+    </div>
+  </div>
+</div>
+</section>
+
+
+
+<section>
+<div class="wrap">
+  <h2>AI Models</h2>
+  <p class="section-sub">Three trained models cooperating at runtime.</p>
+
+  <table>
+    <tr><th>Model</th><th>Architecture</th><th>Input</th><th>Output</th></tr>
+    <tr>
+      <td><strong>Tilt LSTM</strong><br /><span style="color:#57606a;font-size:11px">crane_lstm_model.pth</span></td>
+      <td>2-layer LSTM, hidden=128<br />+ Linear(256) → Linear(50)</td>
+      <td>7 features × 250 steps<br />(5 sec history)</td>
+      <td>Structural tilt forecast<br />next 1.0 s (50 steps)</td>
+    </tr>
+    <tr>
+      <td><strong>Risk LSTM</strong><br /><span style="color:#57606a;font-size:11px">crane_risk_lstm_model.pth</span></td>
+      <td>2-layer LSTM, hidden=128<br />+ Linear(256) → Linear(50)</td>
+      <td>10 features × 250 steps<br />(5 sec history)</td>
+      <td>Margin ratio forecast<br />next 1.0 s (50 steps)</td>
+    </tr>
+    <tr>
+      <td><strong>PPO Agent</strong><br /><span style="color:#57606a;font-size:11px">crane_ppo_agent.zip</span></td>
+      <td>MLP policy π=[256,256]<br />value V=[256,256]</td>
+      <td>8-dim observation vector<br />(normalised via VecNormalize)</td>
+      <td>Trolley action ∈ [−1, +1]<br />(inward ↔ outward)</td>
+    </tr>
+  </table>
+</div>
+</section>
+
+
+
+<section>
+<div class="wrap">
+  <h2>Risk Classification</h2>
+  <p class="section-sub">The early warning system outputs one of four risk levels every 100 ms, smoothed by a hysteresis filter to prevent noisy flickering.</p>
+
+  <table>
+    <tr><th>Level</th><th>Margin Ratio</th><th>Trigger Condition</th><th>Response</th></tr>
+    <tr>
+      <td><span class="badge b-safe">SAFE</span></td>
+      <td>&gt; 0.35</td>
+      <td>No threshold crossed</td>
+      <td>Normal operation</td>
+    </tr>
+    <tr>
+      <td><span class="badge b-warn">WARNING</span></td>
+      <td>0.20 – 0.35</td>
+      <td>2+ of: margin low, predicted low, tilt rate high, tilt high</td>
+      <td>Operator alert — reduce load/speed</td>
+    </tr>
+    <tr>
+      <td><span class="badge b-crit">CRITICAL</span></td>
+      <td>0.08 – 0.20</td>
+      <td>2+ critical signals including LSTM +500 ms prediction</td>
+      <td>PPO copilot takes active control</td>
+    </tr>
+    <tr>
+      <td><span class="badge b-imm">IMMINENT TIPPING</span></td>
+      <td>&lt; 0.08</td>
+      <td>2+ severe signals — margin collapse imminent</td>
+      <td>Emergency retract — stop all operations</td>
+    </tr>
+  </table>
+
+  <p style="margin-top:14px;font-size:12px;color:var(--muted)">
+    Hysteresis: escalates after 2 consecutive high-risk inferences · de-escalates after 5 consecutive safe inferences.
+  </p>
+</div>
+</section>
+
+
+
+<section>
+<div class="wrap">
+  <h2>PPO Training Configuration</h2>
+  <p class="section-sub">Improved from baseline with VecNormalize, parallel environments, and a decaying learning rate.</p>
+
+  <div class="metrics-grid">
+    <div class="metric-box">
+      <span class="val">1M</span>
+      <span class="lbl">Total timesteps</span>
+    </div>
+    <div class="metric-box">
+      <span class="val">8</span>
+      <span class="lbl">Parallel envs</span>
+    </div>
+    <div class="metric-box">
+      <span class="val">16,384</span>
+      <span class="lbl">Steps per update</span>
+    </div>
+    <div class="metric-box">
+      <span class="val">3e-4→1e-5</span>
+      <span class="lbl">LR schedule</span>
+    </div>
+    <div class="metric-box">
+      <span class="val">[256,256]</span>
+      <span class="lbl">Network width</span>
+    </div>
+    <div class="metric-box">
+      <span class="val">VecNorm</span>
+      <span class="lbl">Obs + reward norm</span>
+    </div>
+  </div>
+</div>
+</section>
+
+
+
+<section>
+<div class="wrap">
+  <h2>Key Improvements Made</h2>
+  <p class="section-sub">10 targeted upgrades applied to the original codebase.</p>
+
+  <ul class="imp-list">
+    <li>
+      <div class="imp-dot dot-red"></div>
+      <div><strong>VecNormalize for PPO</strong> — normalises observations and rewards online, fixing the ±1e7 stability margin scale problem that destabilised gradient updates. <span>train_ppo.py</span></div>
+    </li>
+    <li>
+      <div class="imp-dot dot-red"></div>
+      <div><strong>Randomised reset() initial conditions</strong> — trolley, load, and swing angle are now randomly sampled each episode, preventing the agent from overfitting to a single fixed start state. <span>crane_env.py</span></div>
+    </li>
+    <li>
+      <div class="imp-dot dot-red"></div>
+      <div><strong>1M timesteps + 8 parallel envs</strong> — 5× more training data vs the original 200k / 1 env configuration. <span>train_ppo.py</span></div>
+    </li>
+    <li>
+      <div class="imp-dot dot-red"></div>
+      <div><strong>Dataset 300 → 1,000 episodes</strong> — 938K rows vs original ~240K, dramatically improving LSTM generalisation. <span>generate_dataset.py</span></div>
+    </li>
+    <li>
+      <div class="imp-dot dot-yellow"></div>
+      <div><strong>Ornstein-Uhlenbeck wind model</strong> — replaced pure random walk with mean-reverting OU process; wind stays physically plausible over long episodes. <span>wind.py</span></div>
+    </li>
+    <li>
+      <div class="imp-dot dot-yellow"></div>
+      <div><strong>LSTM: hidden=128, 50 epochs, early stopping</strong> — doubled capacity, adaptive LR, Huber+MSE loss for robustness against rare tipping steps. <span>train_lstm.py, train_risk_lstm.py</span></div>
+    </li>
+    <li>
+      <div class="imp-dot dot-yellow"></div>
+      <div><strong>Removed reward hard-clip [-50, +10]</strong> — tipping penalty of -100 now propagates fully; recovery bonus capped at 2.0 to prevent single-step dominance. <span>crane_env.py</span></div>
+    </li>
+    <li>
+      <div class="imp-dot dot-yellow"></div>
+      <div><strong>Early warning switched to Risk LSTM</strong> — predicts margin_ratio directly instead of chaining through tilt prediction, reducing classification error. <span>early_warning.py</span></div>
+    </li>
+    <li>
+      <div class="imp-dot dot-green"></div>
+      <div><strong>Hysteresis debouncing</strong> — escalate after 2, de-escalate after 5 consecutive inferences; eliminates SAFE→WARNING flickering. <span>early_warning.py</span></div>
+    </li>
+    <li>
+      <div class="imp-dot dot-green"></div>
+      <div><strong>Shared models.py + data_utils.py</strong> — single source of truth for LSTM classes and split logic; no more silent drift between training and inference. <span>models.py, data_utils.py</span></div>
+    </li>
+  </ul>
+</div>
+</section>
+
+
+
+<section>
+<div class="wrap">
+  <h2>Quickstart</h2>
+  <p class="section-sub">Run the full pipeline from scratch in order.</p>
+
+  <div class="code-block">
+<span class="cm"># 1. Generate 1,000-episode sensor dataset</span>
+<span class="kw">python</span> <span class="fn">generate_dataset.py</span>
+
+<span class="cm"># 2. Train structural tilt LSTM</span>
+<span class="kw">python</span> <span class="fn">train_lstm.py</span>
+
+<span class="cm"># 3. Train stability risk LSTM</span>
+<span class="kw">python</span> <span class="fn">train_risk_lstm.py</span>
+
+<span class="cm"># 4. Train PPO copilot agent  (1M steps, ~1-2 hrs on CPU)</span>
+<span class="kw">python</span> <span class="fn">train_ppo.py</span>
+
+<span class="cm"># 5. Evaluate early warning system</span>
+<span class="kw">python</span> <span class="fn">early_warning.py</span>
+
+<span class="cm"># 6. Benchmark PPO vs HOLD vs INWARD controllers</span>
+<span class="kw">python</span> <span class="fn">evaluate_ppo_copilot.py</span>
+  </div>
+
+  <p style="margin-top:16px;font-size:12px;color:var(--muted)">
+    After first PPO training run: set <code style="background:#f7f8fa;border:1px solid #e5e7eb;border-radius:3px;padding:1px 5px">PPO_EPISODE_FRACTION = 0.4</code> in <code style="background:#f7f8fa;border:1px solid #e5e7eb;border-radius:3px;padding:1px 5px">generate_dataset.py</code>, regenerate the dataset, and retrain LSTMs for best results.
+  </p>
+</div>
+</section>
+
+
+
+<section>
+<div class="wrap">
+  <h2>Project Files</h2>
+  <p class="section-sub">Clean modular structure — each file has a single responsibility.</p>
+
+  <table>
+    <tr><th>File</th><th>Role</th></tr>
+    <tr><td><code>physics.py</code></td><td>Wind force, pendulum, moments, stability margin calculations</td></tr>
+    <tr><td><code>wind.py</code></td><td>Ornstein-Uhlenbeck wind + random gust model</td></tr>
+    <tr><td><code>crane_env.py</code></td><td>Gymnasium environment — physics step, reward, observation</td></tr>
+    <tr><td><code>models.py</code></td><td>Shared LSTM model definitions (CraneTiltLSTM, CraneRiskLSTM)</td></tr>
+    <tr><td><code>data_utils.py</code></td><td>Shared dataset split, episode store, scaler utilities</td></tr>
+    <tr><td><code>generate_dataset.py</code></td><td>Simulate 1,000 episodes → CSV sensor dataset</td></tr>
+    <tr><td><code>train_lstm.py</code></td><td>Train structural tilt forecasting LSTM</td></tr>
+    <tr><td><code>train_risk_lstm.py</code></td><td>Train stability margin ratio forecasting LSTM</td></tr>
+    <tr><td><code>train_ppo.py</code></td><td>Train PPO crane controller agent</td></tr>
+    <tr><td><code>early_warning.py</code></td><td>Run risk LSTM inference + hysteresis risk classification</td></tr>
+    <tr><td><code>evaluate_ppo_copilot.py</code></td><td>Benchmark PPO vs HOLD vs INWARD on challenge scenarios</td></tr>
+  </table>
+</div>
+</section>
+
+
+<footer>
+  Made with IBM Bob  ·  Crane Copilot — AI Safety Research Project
+</footer>
+
+</body>
+</html>
