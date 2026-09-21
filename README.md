@@ -143,3 +143,77 @@ python -m http.server 8000
 | [`visualize_crane.py`](./visualize_crane.py) | Matplotlib 2D animation visualizer |
 | [`crane-copilot-project-website.html`](./crane-copilot-project-website.html) | Project overview showcase website |
 | [`PROJECT_PIPELINE.md`](./PROJECT_PIPELINE.md) | Comprehensive engineering and physics pipeline reference |
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Application is running
+The Crane Copilot 3D WebGL application is running at:
+
+http://localhost:8000/visualize_crane_3d.html
+
+It loaded successfully with:
+
+HTTP 200 OK
+Interactive 3D crane simulation
+SAFE status
+AI Copilot monitoring enabled
+Scenario presets and live telemetry controls available
+The local server is still running in the background.
+
+How to run the application
+# Open PowerShell in the project folder:
+
+Set-Location "G:\My Drive\Projects\TCS_Innovent_2026\Prototype\crane-copilot\crane-copilot"
+
+
+# Start the web application:
+& "C:\Users\SANKALP\AppData\Local\Programs\Python\Python314\python.exe" -m http.server 8000
+
+# Then open:
+http://localhost:8000/visualize_crane_3d.html
+
+# Alternatively, open the static project website:
+http://localhost:8000/crane-copilot-project-website.html
+
+## Other application modes
+# Native Python 3D simulator
+& "C:\Users\SANKALP\AppData\Local\Programs\Python\Python314\python.exe" visualize_crane_3d.py
+
+# Tkinter control panel
+& "C:\Users\SANKALP\AppData\Local\Programs\Python\Python314\python.exe" visualize_crane_tk.py
+
+# Console simulation
+& "C:\Users\SANKALP\AppData\Local\Programs\Python\Python314\python.exe" run_episode.py
+
+# Verification performed
+# Environment validation passed:
+
+
+The 20-second console simulation also completed successfully without crossing the tipping threshold.
+
+The documented pytest command ran, but pytest found 0 discoverable test functions in the repository:
+
+
+More detailed execution instructions are available in README.md and PROJECT_PIPELINE.md.
