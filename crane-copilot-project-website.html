@@ -272,6 +272,12 @@
   <h1>🏗️ Crane <span>Copilot</span></h1>
   <p>An AI-powered crane safety system combining deep reinforcement learning, LSTM forecasting, and a real-time early warning layer to prevent crane tipping accidents.</p>
 
+  <div style="margin-top: 22px; display: flex; justify-content: center; gap: 14px;">
+    <a href="visualize_crane_3d.html" target="_blank" style="background: #38bdf8; color: #0b0f19; text-decoration: none; padding: 12px 26px; border-radius: 8px; font-weight: 700; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 18px rgba(56, 189, 248, 0.4); transition: transform 0.2s;">
+      🌐 Launch Interactive 3D Simulation
+    </a>
+  </div>
+
   <div class="hero-stats">
     <div class="hero-stat">
       <span class="num">1,000</span>
@@ -618,28 +624,70 @@
 
 
 
+<section style="background: #0f172a; color: #f1f5f9;">
+<div class="wrap">
+  <h2 style="color: #f8fafc;">🌐 3D Physics & Stability Simulation</h2>
+  <p class="section-sub" style="color: #94a3b8;">High-fidelity interactive 3D WebGL (Three.js) & Python Matplotlib 3D simulators with dynamic lattice mast, trolley, spherical pendulum, and AI Copilot.</p>
+
+  <div class="card-grid">
+    <div class="card" style="background: #1e293b; border-color: #334155; color: #f1f5f9;">
+      <span class="card-icon">🏗️</span>
+      <h3 style="color: #f8fafc;">Full 3D Structural Rigging</h3>
+      <p style="color: #94a3b8;">Detailed 4-chord lattice tower mast, triangular boom, rear counter-jib with concrete ballast, rotating slewing ring, and operator cockpit.</p>
+    </div>
+    <div class="card" style="background: #1e293b; border-color: #334155; color: #f1f5f9;">
+      <span class="card-icon">🌪️</span>
+      <h3 style="color: #f8fafc;">3D Wind & Dynamic Tilt</h3>
+      <p style="color: #94a3b8;">Spherical pendulum load sway (&theta;x, &theta;y), mast structural bending flex, and animated 3D particle wind field simulating gusts and turbulence.</p>
+    </div>
+    <div class="card" style="background: #1e293b; border-color: #334155; color: #f1f5f9;">
+      <span class="card-icon">🤖</span>
+      <h3 style="color: #f8fafc;">Autonomous AI Copilot</h3>
+      <p style="color: #94a3b8;">Active stabilization toggle with automatic trolley counter-steering, anti-sway damping, and Web Audio API synthesized warning sirens.</p>
+    </div>
+    <div class="card" style="background: #1e293b; border-color: #334155; color: #f1f5f9;">
+      <span class="card-icon">🎥</span>
+      <h3 style="color: #f8fafc;">Multi-Camera System</h3>
+      <p style="color: #94a3b8;">6 viewpoint modes: Orbit Overview, Operator Cockpit View, Hook Follow, Base Tilt Inspector, Profile Elevation, and Top-Down Plan view.</p>
+    </div>
+  </div>
+
+  <div style="margin-top: 24px; text-align: center;">
+    <a href="visualize_crane_3d.html" target="_blank" style="background: #38bdf8; color: #0b0f19; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 700; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 20px rgba(56, 189, 248, 0.4);">
+      🚀 Launch Fullscreen 3D WebGL Simulation
+    </a>
+  </div>
+</div>
+</section>
+
+
+
 <section>
 <div class="wrap">
   <h2>Quickstart</h2>
   <p class="section-sub">Run the full pipeline from scratch in order.</p>
 
   <div class="code-block">
-<span class="cm"># 1. Generate 1,000-episode sensor dataset</span>
+<span class="cm"># 1. Launch Interactive 3D Simulation (Browser WebGL)</span>
+<span class="kw">python</span> <span class="fn">visualize_crane_3d.py</span> --web
+
+<span class="cm"># 2. Launch Native Python 3D Simulation (Matplotlib 3D)</span>
+<span class="kw">python</span> <span class="fn">visualize_crane_3d.py</span>
+
+<span class="cm"># 3. Generate 1,000-episode sensor dataset</span>
 <span class="kw">python</span> <span class="fn">generate_dataset.py</span>
 
-<span class="cm"># 2. Train structural tilt LSTM</span>
+<span class="cm"># 4. Train structural tilt & risk LSTMs</span>
 <span class="kw">python</span> <span class="fn">train_lstm.py</span>
-
-<span class="cm"># 3. Train stability risk LSTM</span>
 <span class="kw">python</span> <span class="fn">train_risk_lstm.py</span>
 
-<span class="cm"># 4. Train PPO copilot agent  (1M steps, ~1-2 hrs on CPU)</span>
+<span class="cm"># 5. Train PPO copilot agent  (1M steps, ~1-2 hrs on CPU)</span>
 <span class="kw">python</span> <span class="fn">train_ppo.py</span>
 
-<span class="cm"># 5. Evaluate early warning system</span>
+<span class="cm"># 6. Evaluate early warning system</span>
 <span class="kw">python</span> <span class="fn">early_warning.py</span>
 
-<span class="cm"># 6. Benchmark PPO vs HOLD vs INWARD controllers</span>
+<span class="cm"># 7. Benchmark PPO vs HOLD vs INWARD controllers</span>
 <span class="kw">python</span> <span class="fn">evaluate_ppo_copilot.py</span>
   </div>
 
@@ -658,6 +706,8 @@
 
   <table>
     <tr><th>File</th><th>Role</th></tr>
+    <tr><td><code>visualize_crane_3d.html</code></td><td>Standalone interactive Three.js 3D WebGL crane simulation with HUD & audio alerts</td></tr>
+    <tr><td><code>visualize_crane_3d.py</code></td><td>Native Python 3D simulation executable with keyboard controls and web launcher</td></tr>
     <tr><td><code>physics.py</code></td><td>Wind force, pendulum, moments, stability margin calculations</td></tr>
     <tr><td><code>wind.py</code></td><td>Ornstein-Uhlenbeck wind + random gust model</td></tr>
     <tr><td><code>crane_env.py</code></td><td>Gymnasium environment — physics step, reward, observation</td></tr>
@@ -669,6 +719,8 @@
     <tr><td><code>train_ppo.py</code></td><td>Train PPO crane controller agent</td></tr>
     <tr><td><code>early_warning.py</code></td><td>Run risk LSTM inference + hysteresis risk classification</td></tr>
     <tr><td><code>evaluate_ppo_copilot.py</code></td><td>Benchmark PPO vs HOLD vs INWARD on challenge scenarios</td></tr>
+    <tr><td><code>visualize_crane_tk.py</code></td><td>Interactive 2D Tkinter parameter tuning panel</td></tr>
+    <tr><td><code>visualize_crane.py</code></td><td>Matplotlib 2D animation visualizer</td></tr>
   </table>
 </div>
 </section>

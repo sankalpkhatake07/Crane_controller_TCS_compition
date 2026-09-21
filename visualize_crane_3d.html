@@ -1,0 +1,1810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Crane Copilot — Interactive 3D Physics Simulation & AI Safety Copilot</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0b0f19;
+      --panel-bg: rgba(15, 23, 42, 0.88);
+      --panel-border: rgba(51, 65, 85, 0.7);
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --safe: #22c55e;
+      --warning: #f59e0b;
+      --critical: #f97316;
+      --tipping: #ef4444;
+      --hud-glow: rgba(56, 189, 248, 0.25);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+      user-select: none;
+    }
+
+    #canvas-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+
+    /* ── TOP HEADER / STATUS HUD ── */
+    #header-hud {
+      position: absolute;
+      top: 14px;
+      left: 18px;
+      right: 18px;
+      z-index: 10;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      backdrop-filter: blur(12px);
+      padding: 8px 16px;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      pointer-events: auto;
+    }
+
+    .brand-title {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: #f8fafc;
+    }
+
+    .brand-title span { color: var(--accent); }
+
+    .brand-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .status-hud-container {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      pointer-events: auto;
+    }
+
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 20px;
+      border-radius: 30px;
+      font-weight: 700;
+      font-size: 14px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      backdrop-filter: blur(12px);
+      transition: all 0.25s ease;
+    }
+
+    .status-pill.safe {
+      background: rgba(34, 197, 94, 0.18);
+      border: 1.5px solid var(--safe);
+      color: #86efac;
+      box-shadow: 0 0 25px rgba(34, 197, 94, 0.35);
+    }
+    .status-pill.warning {
+      background: rgba(245, 158, 11, 0.2);
+      border: 1.5px solid var(--warning);
+      color: #fde68a;
+      box-shadow: 0 0 25px rgba(245, 158, 11, 0.4);
+    }
+    .status-pill.critical {
+      background: rgba(249, 115, 22, 0.25);
+      border: 1.5px solid var(--critical);
+      color: #fdba74;
+      box-shadow: 0 0 30px rgba(249, 115, 22, 0.5);
+    }
+    .status-pill.tipping {
+      background: rgba(239, 68, 68, 0.35);
+      border: 2px solid var(--tipping);
+      color: #fca5a5;
+      box-shadow: 0 0 40px rgba(239, 68, 68, 0.8);
+      animation: pulseAlert 0.8s infinite alternate;
+    }
+
+    @keyframes pulseAlert {
+      from { transform: scale(1); filter: brightness(1); }
+      to { transform: scale(1.06); filter: brightness(1.3); }
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .header-quick-actions {
+      display: flex;
+      gap: 8px;
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      backdrop-filter: blur(12px);
+      padding: 6px;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    }
+
+    .btn-quick {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: var(--text);
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .btn-quick:hover {
+      background: #334155;
+      border-color: var(--accent);
+      color: white;
+    }
+    .btn-quick.active {
+      background: rgba(56, 189, 248, 0.2);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* ── LEFT CONTROL DOCK ── */
+    #left-dock {
+      position: absolute;
+      top: 76px;
+      left: 18px;
+      width: 320px;
+      max-height: calc(100vh - 96px);
+      overflow-y: auto;
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      backdrop-filter: blur(16px);
+      border-radius: 14px;
+      padding: 16px;
+      z-index: 10;
+      box-shadow: 0 12px 36px rgba(0,0,0,0.6);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    #left-dock::-webkit-scrollbar { width: 4px; }
+    #left-dock::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+
+    .dock-section-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .scenario-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .btn-scenario {
+      padding: 9px 8px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      transition: all 0.2s;
+    }
+
+    .btn-safe { background: rgba(34, 197, 94, 0.15); color: #4ade80; border-color: rgba(34, 197, 94, 0.4); }
+    .btn-safe:hover { background: rgba(34, 197, 94, 0.3); }
+
+    .btn-warning { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border-color: rgba(245, 158, 11, 0.4); }
+    .btn-warning:hover { background: rgba(245, 158, 11, 0.3); }
+
+    .btn-gust { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); }
+    .btn-gust:hover { background: rgba(56, 189, 248, 0.3); }
+
+    .btn-tipping { background: rgba(239, 68, 68, 0.15); color: #f87171; border-color: rgba(239, 68, 68, 0.4); }
+    .btn-tipping:hover { background: rgba(239, 68, 68, 0.3); }
+
+    /* AI COPILOT CARD */
+    .copilot-card {
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.95));
+      border: 1.5px solid rgba(56, 189, 248, 0.4);
+      border-radius: 10px;
+      padding: 12px;
+      position: relative;
+      overflow: hidden;
+    }
+    .copilot-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; width: 4px; height: 100%;
+      background: var(--accent);
+    }
+    .copilot-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .copilot-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #f8fafc;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .copilot-toggle {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      background: #334155;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .copilot-toggle.on {
+      background: var(--accent);
+    }
+    .copilot-toggle::after {
+      content: '';
+      position: absolute;
+      top: 3px; left: 3px;
+      width: 18px; height: 18px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.2s;
+    }
+    .copilot-toggle.on::after {
+      transform: translateX(20px);
+    }
+    .copilot-status-text {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+    .copilot-action-badge {
+      display: inline-block;
+      margin-top: 6px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      background: rgba(34, 197, 94, 0.2);
+      color: #86efac;
+      border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+
+    /* SLIDERS */
+    .slider-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .slider-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .slider-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .slider-val {
+      font-weight: 700;
+      color: #f8fafc;
+    }
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 5px;
+      border-radius: 3px;
+      background: #334155;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.25);
+    }
+
+    /* ── RIGHT TELEMETRY HUD ── */
+    #right-dock {
+      position: absolute;
+      top: 76px;
+      right: 18px;
+      width: 330px;
+      max-height: calc(100vh - 96px);
+      overflow-y: auto;
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      backdrop-filter: blur(16px);
+      border-radius: 14px;
+      padding: 16px;
+      z-index: 10;
+      box-shadow: 0 12px 36px rgba(0,0,0,0.6);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    #right-dock::-webkit-scrollbar { width: 4px; }
+    #right-dock::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+
+    .telemetry-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .tel-card {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid rgba(51, 65, 85, 0.6);
+      border-radius: 8px;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .tel-card.full-width {
+      grid-column: span 2;
+    }
+    .tel-card-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .tel-card-val {
+      font-size: 15px;
+      font-weight: 700;
+      color: #f8fafc;
+      font-feature-settings: "tnum";
+      font-variant-numeric: tabular-nums;
+    }
+    .tel-card-val span {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+    /* MOMENT BAR GAUGE */
+    .gauge-container {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid rgba(51, 65, 85, 0.6);
+      border-radius: 8px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .gauge-track {
+      height: 10px;
+      background: #1e293b;
+      border-radius: 6px;
+      overflow: hidden;
+      position: relative;
+    }
+    .gauge-fill {
+      height: 100%;
+      width: 35%;
+      background: linear-gradient(90deg, var(--safe) 0%, var(--warning) 70%, var(--critical) 90%, var(--tipping) 100%);
+      transition: width 0.15s ease;
+      border-radius: 6px;
+    }
+    .gauge-markers {
+      display: flex;
+      justify-content: space-between;
+      font-size: 9px;
+      color: var(--text-muted);
+    }
+
+    /* CHART CANVAS */
+    .chart-box {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid rgba(51, 65, 85, 0.6);
+      border-radius: 8px;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    #telemetry-canvas {
+      width: 100%;
+      height: 90px;
+      display: block;
+      background: #0f172a;
+      border-radius: 6px;
+    }
+
+    /* ── BOTTOM CAMERA DOCK ── */
+    #bottom-dock {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      backdrop-filter: blur(14px);
+      padding: 6px 12px;
+      border-radius: 30px;
+      display: flex;
+      gap: 6px;
+      z-index: 10;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+    }
+
+    .btn-cam {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .btn-cam:hover {
+      color: white;
+      background: rgba(255, 255, 255, 0.08);
+    }
+    .btn-cam.active {
+      background: var(--accent);
+      color: #0b0f19;
+      font-weight: 700;
+    }
+
+    /* AUDIO ALERT INDICATOR */
+    .sound-toggle {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 16px;
+      padding: 4px;
+      transition: color 0.2s;
+    }
+    .sound-toggle:hover { color: white; }
+
+    /* OVERLAY NOTICE */
+    #warning-banner {
+      position: absolute;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(239, 68, 68, 0.9);
+      border: 1px solid #f87171;
+      color: white;
+      padding: 8px 24px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      display: none;
+      z-index: 15;
+      box-shadow: 0 0 30px rgba(239, 68, 68, 0.7);
+      animation: bannerPulse 1s infinite alternate;
+      pointer-events: none;
+    }
+    @keyframes bannerPulse {
+      from { opacity: 0.85; transform: translateX(-50%) scale(1); }
+      to { opacity: 1; transform: translateX(-50%) scale(1.03); }
+    }
+  </style>
+
+  <!-- Three.js and OrbitControls via reliable CDNs -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+  <div id="canvas-container"></div>
+
+  <div id="warning-banner">⚠️ GUST INCOMING: OVERTURNING MOMENT CRITICAL</div>
+
+  <!-- HEADER -->
+  <header id="header-hud">
+    <div class="brand-group">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="12 2 2 22 22 22 12 2"></polygon>
+        <line x1="12" y1="6" x2="12" y2="12"></line>
+        <circle cx="12" cy="16" r="1"></circle>
+      </svg>
+      <div>
+        <div class="brand-title">Crane Copilot <span>3D</span></div>
+      </div>
+      <span class="brand-badge">Agentic AI Safety Engine</span>
+    </div>
+
+    <div class="status-hud-container">
+      <div id="status-badge" class="status-pill safe">
+        <div class="status-dot"></div>
+        <span id="status-text">STATUS: STABLE</span>
+      </div>
+
+      <div class="header-quick-actions">
+        <button id="btn-pause" class="btn-quick" title="Pause/Resume Simulation">
+          <span id="pause-icon">⏸️</span> Pause
+        </button>
+        <button id="btn-reset" class="btn-quick" title="Reset Episode">
+          🔄 Reset
+        </button>
+        <button id="btn-sound" class="btn-quick" title="Audio Alarms">
+          <span id="sound-icon">🔊</span> Siren On
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- LEFT DOCK: CONTROLS & COPILOT -->
+  <aside id="left-dock">
+    <div>
+      <div class="dock-section-title">Scenario Presets</div>
+      <div class="scenario-buttons">
+        <button class="btn-scenario btn-safe" onclick="setScenario('SAFE')">Safe (Calm)</button>
+        <button class="btn-scenario btn-warning" onclick="setScenario('CRITICAL')">Critical (High)</button>
+        <button class="btn-scenario btn-gust" onclick="setScenario('GUST')">Severe Gust</button>
+        <button class="btn-scenario btn-tipping" onclick="setScenario('TIPPING')">Tipping Failure</button>
+      </div>
+    </div>
+
+    <!-- AI COPILOT CARD -->
+    <div class="copilot-card">
+      <div class="copilot-header">
+        <div class="copilot-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2">
+            <path d="M12 2a4 4 0 0 1 4 4v2a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4z"></path>
+            <path d="M18 14a6 6 0 0 1-12 0v-2"></path>
+            <line x1="12" y1="18" x2="12" y2="22"></line>
+            <line x1="8" y1="22" x2="16" y2="22"></line>
+          </svg>
+          AI Copilot Mode
+        </div>
+        <div id="copilot-toggle" class="copilot-toggle on" onclick="toggleCopilot()"></div>
+      </div>
+      <div id="copilot-desc" class="copilot-status-text">
+        Autonomous counter-steering active. Monitored stability reserve & anti-sway trolley modulation.
+      </div>
+      <div id="copilot-badge" class="copilot-action-badge">MONITORING</div>
+    </div>
+
+    <!-- PARAMETER SLIDERS -->
+    <div>
+      <div class="dock-section-title">Crane Dynamics Controls</div>
+      <div class="slider-group">
+        <div class="slider-row">
+          <div class="slider-label">
+            <span>Trolley Position (Boom X)</span>
+            <span id="lbl-trolley" class="slider-val">20.0 m</span>
+          </div>
+          <input type="range" id="sl-trolley" min="2" max="48" step="0.5" value="20" oninput="onSliderChange('trolley', this.value)" />
+        </div>
+
+        <div class="slider-row">
+          <div class="slider-label">
+            <span>Payload Mass</span>
+            <span id="lbl-mass" class="slider-val">5,000 kg</span>
+          </div>
+          <input type="range" id="sl-mass" min="1000" max="25000" step="500" value="5000" oninput="onSliderChange('mass', this.value)" />
+        </div>
+
+        <div class="slider-row">
+          <div class="slider-label">
+            <span>Cable Drop Length</span>
+            <span id="lbl-cable" class="slider-val">15.0 m</span>
+          </div>
+          <input type="range" id="sl-cable" min="5" max="35" step="1" value="15" oninput="onSliderChange('cable', this.value)" />
+        </div>
+
+        <div class="slider-row">
+          <div class="slider-label">
+            <span>Slewing Angle (Yaw)</span>
+            <span id="lbl-slew" class="slider-val">0.0°</span>
+          </div>
+          <input type="range" id="sl-slew" min="-180" max="180" step="1" value="0" oninput="onSliderChange('slew', this.value)" />
+        </div>
+      </div>
+    </div>
+
+    <!-- WIND & ATMOSPHERE SLIDERS -->
+    <div>
+      <div class="dock-section-title">Atmospheric & Wind Model</div>
+      <div class="slider-group">
+        <div class="slider-row">
+          <div class="slider-label">
+            <span>Base Wind Velocity</span>
+            <span id="lbl-wind" class="slider-val">5.0 m/s</span>
+          </div>
+          <input type="range" id="sl-wind" min="-30" max="30" step="0.5" value="5" oninput="onSliderChange('wind', this.value)" />
+        </div>
+
+        <div class="slider-row">
+          <div class="slider-label">
+            <span>Turbulence Strength</span>
+            <span id="lbl-turb" class="slider-val">1.5</span>
+          </div>
+          <input type="range" id="sl-turb" min="0" max="6" step="0.1" value="1.5" oninput="onSliderChange('turb', this.value)" />
+        </div>
+
+        <div class="slider-row">
+          <div class="slider-label">
+            <span>Gust Trigger Probability</span>
+            <span id="lbl-gust" class="slider-val">0.010</span>
+          </div>
+          <input type="range" id="sl-gust" min="0" max="0.05" step="0.005" value="0.01" oninput="onSliderChange('gust', this.value)" />
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- RIGHT DOCK: TELEMETRY HUD -->
+  <aside id="right-dock">
+    <div class="dock-section-title">Real-Time Stability Telemetry</div>
+
+    <div class="gauge-container">
+      <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:700;">
+        <span>OVERTURNING vs RESTORING MOMENT</span>
+        <span id="val-moment-pct" style="color:var(--safe);">35.8%</span>
+      </div>
+      <div class="gauge-track">
+        <div id="moment-gauge-fill" class="gauge-fill" style="width:35.8%;"></div>
+      </div>
+      <div class="gauge-markers">
+        <span>0%</span>
+        <span>50% SAFE</span>
+        <span>75% WARN</span>
+        <span>90% CRIT</span>
+        <span>100% TIP</span>
+      </div>
+    </div>
+
+    <div class="telemetry-grid">
+      <div class="tel-card full-width">
+        <span class="tel-card-label">Stability Margin Reserve</span>
+        <div class="tel-card-val" id="val-stability-margin" style="color:#4ade80;">
+          3,149,433 <span>N·m</span>
+        </div>
+      </div>
+
+      <div class="tel-card">
+        <span class="tel-card-label">Total Overturning Moment</span>
+        <div class="tel-card-val" id="val-overturning-moment">
+          1,755,566 <span>N·m</span>
+        </div>
+      </div>
+
+      <div class="tel-card">
+        <span class="tel-card-label">Restoring Moment</span>
+        <div class="tel-card-val" id="val-restoring-moment">
+          4,905,000 <span>N·m</span>
+        </div>
+      </div>
+
+      <div class="tel-card">
+        <span class="tel-card-label">Wind Velocity</span>
+        <div class="tel-card-val" id="val-wind-speed">
+          5.00 <span>m/s</span>
+        </div>
+      </div>
+
+      <div class="tel-card">
+        <span class="tel-card-label">Wind Aero Force</span>
+        <div class="tel-card-val" id="val-wind-force">
+          183.7 <span>N</span>
+        </div>
+      </div>
+
+      <div class="tel-card">
+        <span class="tel-card-label">Radial Swing Angle (&theta;x)</span>
+        <div class="tel-card-val" id="val-swing-angle">
+          0.06° <span>(0.001 rad)</span>
+        </div>
+      </div>
+
+      <div class="tel-card">
+        <span class="tel-card-label">Swing Angular Rate</span>
+        <div class="tel-card-val" id="val-swing-rate">
+          0.13°/s <span>(0.002 rad/s)</span>
+        </div>
+      </div>
+
+      <div class="tel-card">
+        <span class="tel-card-label">Structural Mast Tilt (&phi;)</span>
+        <div class="tel-card-val" id="val-tilt-angle">
+          0.82° <span>(0.014 rad)</span>
+        </div>
+      </div>
+
+      <div class="tel-card">
+        <span class="tel-card-label">Trolley Boom Extension</span>
+        <div class="tel-card-val" id="val-extension-ratio">
+          40.0% <span>(20.0 m)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- LIVE TELEMETRY STRIP CHART -->
+    <div class="chart-box">
+      <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--text-muted); font-weight:700;">
+        <span>STABILITY MARGIN HISTORY</span>
+        <span style="color:var(--accent);">CURRENT: 3.15 MN·m</span>
+      </div>
+      <canvas id="telemetry-canvas" width="300" height="90"></canvas>
+    </div>
+  </aside>
+
+  <!-- BOTTOM DOCK: CAMERA SELECTOR -->
+  <nav id="bottom-dock">
+    <button class="btn-cam active" onclick="setCameraView('orbit')">
+      🌐 Orbit Overview
+    </button>
+    <button class="btn-cam" onclick="setCameraView('cab')">
+      🏗️ Operator Cab
+    </button>
+    <button class="btn-cam" onclick="setCameraView('hook')">
+      🪝 Hook Follow
+    </button>
+    <button class="btn-cam" onclick="setCameraView('base')">
+      📐 Base Tilt Inspector
+    </button>
+    <button class="btn-cam" onclick="setCameraView('side')">
+      📏 Elevation (Side)
+    </button>
+    <button class="btn-cam" onclick="setCameraView('top')">
+      🧭 Top-Down
+    </button>
+  </nav>
+
+  <!-- 3D SIMULATION ENGINE SCRIPT -->
+  <script>
+    /* =========================================================
+       CRANE COPILOT 3D - PHYSICS & RENDERING ENGINE
+       ========================================================= */
+
+    // Physical Constants
+    const GRAVITY = 9.81;            // m/s^2
+    const AIR_DENSITY = 1.225;       // kg/m^3
+    const DRAG_COEFFICIENT = 1.2;
+    const EXPOSED_AREA = 10.0;       // m^2
+    const DT = 0.02;                 // 20 ms physics timestep
+
+    // Crane Structural Parameters (default CraneStabilityEnv)
+    const CRANE_PARAMS = {
+      height: 50.0,                  // m
+      boomLength: 50.0,              // m
+      counterBoomLength: 16.0,       // m
+      cableLength: 15.0,             // m
+      craneMass: 100000.0,           // kg
+      baseWidth: 10.0,               // m
+      tiltNaturalFreq: 2.0,          // rad/s
+      tiltDamping: 0.7,
+      maxTargetTilt: 0.08,           // rad
+      trolleySpeed: 0.5              // m/s
+    };
+
+    // State Variables
+    let state = {
+      trolleyPos: 20.0,
+      loadMass: 5000.0,
+      cableLength: 15.0,
+      baseWind: 5.0,
+      currentWind: 5.0,
+      turbulenceStrength: 1.5,
+      gustProbability: 0.01,
+      gustMin: 8.0,
+      gustMax: 20.0,
+      slewAngle: 0.0,               // rad
+      isGusting: false,
+      gustRemainingTime: 0.0,
+      gustVelocity: 0.0,
+
+      // Pendulum state (X: along boom, Y: crosswind/sway)
+      swingAngleX: 0.0,
+      swingVelocityX: 0.0,
+      swingAngleY: 0.0,
+      swingVelocityY: 0.0,
+
+      // Structural tilt state
+      structuralTilt: 0.0,
+      tiltRate: 0.0,
+
+      // Moments & Margins
+      overturningMoment: 0.0,
+      restoringMoment: 4905000.0,
+      stabilityMargin: 3914500.0,
+      marginRatio: 0.8,
+      status: 'safe',               // safe, warning, critical, tipping
+      isTipped: false,
+      collapseProgress: 0.0,
+
+      // AI Copilot
+      copilotActive: true,
+      copilotIntervention: false,
+      copilotAction: 0.0
+    };
+
+    // Simulation Clock
+    let isPaused = false;
+    let simTime = 0.0;
+    let audioEnabled = true;
+    let audioCtx = null;
+    let sirenOsc = null;
+
+    // History buffer for telemetry charts
+    const HISTORY_LENGTH = 150;
+    const historyMargin = new Array(HISTORY_LENGTH).fill(1.0);
+    const historyMoment = new Array(HISTORY_LENGTH).fill(0.2);
+    const historyWind = new Array(HISTORY_LENGTH).fill(5.0);
+
+    /* =========================================================
+       THREE.JS SETUP & SCENE GRAPH
+       ========================================================= */
+
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0b0f19);
+    scene.fog = new THREE.FogExp2(0x0b0f19, 0.005);
+
+    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.5, 1000);
+    camera.position.set(70, 45, 75);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    container.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.maxPolarAngle = Math.PI / 2 - 0.02; // Prevent going below ground
+    controls.minDistance = 5;
+    controls.maxDistance = 250;
+    controls.target.set(15, 25, 0);
+
+    // ── LIGHTING ──
+    const ambientLight = new THREE.AmbientLight(0xdbeafe, 0.7);
+    scene.add(ambientLight);
+
+    const sunLight = new THREE.DirectionalLight(0xfffbeb, 1.4);
+    sunLight.position.set(60, 110, 50);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.width = 2048;
+    sunLight.shadow.mapSize.height = 2048;
+    sunLight.shadow.camera.near = 10;
+    sunLight.shadow.camera.far = 250;
+    const d = 80;
+    sunLight.shadow.camera.left = -d;
+    sunLight.shadow.camera.right = d;
+    sunLight.shadow.camera.top = d;
+    sunLight.shadow.camera.bottom = -d;
+    sunLight.shadow.bias = -0.0005;
+    scene.add(sunLight);
+
+    const hemiLight = new THREE.HemisphereLight(0x38bdf8, 0x1e293b, 0.4);
+    scene.add(hemiLight);
+
+    // ── GROUND & CONSTRUCTION SITE ENVIRONMENT ──
+    const groundGeo = new THREE.PlaneGeometry(350, 350, 64, 64);
+    const groundMat = new THREE.MeshStandardMaterial({
+      color: 0x111827,
+      roughness: 0.9,
+      metalness: 0.1
+    });
+    const ground = new THREE.Mesh(groundGeo, groundMat);
+    ground.rotation.x = -Math.PI / 2;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    // Grid Floor
+    const grid = new THREE.GridHelper(200, 50, 0x38bdf8, 0x1e293b);
+    grid.position.y = 0.02;
+    scene.add(grid);
+
+    // Danger Radius Boundary Ring on Ground
+    const ringGeo = new THREE.RingGeometry(49.8, 50.2, 64);
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0xef4444, side: THREE.DoubleSide, opacity: 0.4, transparent: true });
+    const dangerRing = new THREE.Mesh(ringGeo, ringMat);
+    dangerRing.rotation.x = -Math.PI / 2;
+    dangerRing.position.y = 0.03;
+    scene.add(dangerRing);
+
+    // ── PROCEDURAL 3D TOWER CRANE GEOMETRY ──
+    const craneRoot = new THREE.Group();
+    scene.add(craneRoot);
+
+    // Concrete Base Slab
+    const baseSlabGeo = new THREE.BoxGeometry(CRANE_PARAMS.baseWidth, 1.8, CRANE_PARAMS.baseWidth);
+    const concreteMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.8 });
+    const baseSlab = new THREE.Mesh(baseSlabGeo, concreteMat);
+    baseSlab.position.y = 0.9;
+    baseSlab.castShadow = true;
+    baseSlab.receiveShadow = true;
+    craneRoot.add(baseSlab);
+
+    // Foundation Anchors / Steel Outriggers
+    const outriggerMat = new THREE.MeshStandardMaterial({ color: 0xca8a04, roughness: 0.4, metalness: 0.6 });
+    for (let dx of [-1, 1]) {
+      for (let dz of [-1, 1]) {
+        const anchor = new THREE.Mesh(new THREE.BoxGeometry(1.6, 2.2, 1.6), outriggerMat);
+        anchor.position.set(dx * 4.2, 1.1, dz * 4.2);
+        anchor.castShadow = true;
+        craneRoot.add(anchor);
+      }
+    }
+
+    // Tilting Crane Structure Group (flexes when structural tilt occurs or tipped)
+    const craneTiltGroup = new THREE.Group();
+    craneTiltGroup.position.set(0, 1.8, 0);
+    craneRoot.add(craneTiltGroup);
+
+    // Structural Materials
+    const yellowSteelMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.4, metalness: 0.5 });
+    const darkSteelMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.5, metalness: 0.7 });
+    const cableMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.3, metalness: 0.9 });
+    const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.4, roughness: 0.1, transmission: 0.7 });
+
+    // Function to build a realistic 4-chord lattice truss section
+    function createLatticeMast(height, width, numSections) {
+      const mastGroup = new THREE.Group();
+      const colGeo = new THREE.CylinderGeometry(0.12, 0.12, height, 8);
+
+      // 4 Main corner chords
+      const hw = width / 2;
+      const positions = [[-hw, -hw], [hw, -hw], [hw, hw], [-hw, hw]];
+      positions.forEach(([x, z]) => {
+        const col = new THREE.Mesh(colGeo, yellowSteelMat);
+        col.position.set(x, height / 2, z);
+        col.castShadow = true;
+        mastGroup.add(col);
+      });
+
+      // Horizontal and diagonal cross-braces
+      const secHeight = height / numSections;
+      const braceMat = yellowSteelMat;
+
+      for (let s = 0; s < numSections; s++) {
+        const yBase = s * secHeight;
+        const yTop = (s + 1) * secHeight;
+
+        // Horizontals
+        for (let i = 0; i < 4; i++) {
+          const p1 = positions[i];
+          const p2 = positions[(i + 1) % 4];
+          const horiz = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, width, 6), braceMat);
+          horiz.position.set((p1[0] + p2[0]) / 2, yTop, (p1[1] + p2[1]) / 2);
+          if (p1[0] === p2[0]) horiz.rotation.x = Math.PI / 2;
+          else horiz.rotation.z = Math.PI / 2;
+          mastGroup.add(horiz);
+
+          // Diagonals (X-pattern)
+          const diagLen = Math.sqrt(width * width + secHeight * secHeight);
+          const diag1 = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, diagLen, 6), braceMat);
+          diag1.position.set((p1[0] + p2[0]) / 2, (yBase + yTop) / 2, (p1[1] + p2[1]) / 2);
+          const angle = Math.atan2(secHeight, width);
+          if (p1[0] === p2[0]) {
+            diag1.rotation.x = angle;
+          } else {
+            diag1.rotation.z = angle;
+          }
+          mastGroup.add(diag1);
+        }
+      }
+      return mastGroup;
+    }
+
+    // Build Tower Mast (48m net height above base)
+    const mast = createLatticeMast(CRANE_PARAMS.height - 2, 2.4, 16);
+    craneTiltGroup.add(mast);
+
+    // Slewing / Turntable Platform (rotates with slewAngle)
+    const slewGroup = new THREE.Group();
+    slewGroup.position.set(0, CRANE_PARAMS.height - 2, 0);
+    craneTiltGroup.add(slewGroup);
+
+    // Slewing Ring
+    const slewRing = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.8, 0.8, 24), darkSteelMat);
+    slewRing.position.y = 0.4;
+    slewGroup.add(slewRing);
+
+    // Operator Cabin
+    const cabinGroup = new THREE.Group();
+    cabinGroup.position.set(1.8, 1.2, 1.4);
+    const cabBody = new THREE.Mesh(new THREE.BoxGeometry(2.0, 2.4, 1.6), yellowSteelMat);
+    cabBody.castShadow = true;
+    cabinGroup.add(cabBody);
+
+    const cabWindow = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.4, 1.7), glassMat);
+    cabWindow.position.set(0.1, 0.3, 0);
+    cabinGroup.add(cabWindow);
+    slewGroup.add(cabinGroup);
+
+    // Tower Apex (Cat-head A-frame)
+    const catHeadGeo = new THREE.ConeGeometry(1.5, 6.0, 4);
+    const catHead = new THREE.Mesh(catHeadGeo, yellowSteelMat);
+    catHead.position.set(0, 3.5, 0);
+    catHead.rotation.y = Math.PI / 4;
+    slewGroup.add(catHead);
+
+    // Function to build triangular truss boom
+    function createTriangularBoom(length, height, width, sections) {
+      const boomGroup = new THREE.Group();
+      const secLen = length / sections;
+
+      // Bottom two chords, top one chord
+      const chordGeo = new THREE.CylinderGeometry(0.08, 0.08, length, 6);
+      const c1 = new THREE.Mesh(chordGeo, yellowSteelMat);
+      c1.rotation.z = Math.PI / 2;
+      c1.position.set(length / 2, -height / 2, -width / 2);
+      boomGroup.add(c1);
+
+      const c2 = new THREE.Mesh(chordGeo, yellowSteelMat);
+      c2.rotation.z = Math.PI / 2;
+      c2.position.set(length / 2, -height / 2, width / 2);
+      boomGroup.add(c2);
+
+      const cTop = new THREE.Mesh(chordGeo, yellowSteelMat);
+      cTop.rotation.z = Math.PI / 2;
+      cTop.position.set(length / 2, height / 2, 0);
+      boomGroup.add(cTop);
+
+      // Web truss members
+      for (let s = 0; s < sections; s++) {
+        const x1 = s * secLen;
+        const x2 = (s + 1) * secLen;
+        const xm = (x1 + x2) / 2;
+
+        const strut1 = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, Math.sqrt(height*height + (secLen/2)*(secLen/2)), 6), yellowSteelMat);
+        strut1.position.set((x1 + xm)/2, 0, width/4);
+        boomGroup.add(strut1);
+      }
+      return boomGroup;
+    }
+
+    // Main Jib (Boom) - 50m forward
+    const mainJib = createTriangularBoom(CRANE_PARAMS.boomLength, 1.8, 1.6, 20);
+    mainJib.position.set(1.2, 0.9, 0);
+    slewGroup.add(mainJib);
+
+    // Counter-Jib - 16m backward
+    const counterJib = createTriangularBoom(CRANE_PARAMS.counterBoomLength, 1.8, 1.6, 6);
+    counterJib.rotation.y = Math.PI;
+    counterJib.position.set(-1.2, 0.9, 0);
+    slewGroup.add(counterJib);
+
+    // Counterweights (Concrete blocks on rear boom)
+    const ballastGeo = new THREE.BoxGeometry(3.6, 2.2, 2.4);
+    const ballast = new THREE.Mesh(ballastGeo, concreteMat);
+    ballast.position.set(-13, 0.9, 0);
+    ballast.castShadow = true;
+    slewGroup.add(ballast);
+
+    // Tie-rod Pendant Cables (from Cat-head apex to jib & counter-jib)
+    function createCable(p1, p2) {
+      const length = p1.distanceTo(p2);
+      const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, length, 6), cableMat);
+      const mid = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
+      cable.position.copy(mid);
+      cable.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3().subVectors(p2, p1).normalize());
+      return cable;
+    }
+
+    const apexPoint = new THREE.Vector3(0, 6.2, 0);
+    slewGroup.add(createCable(apexPoint, new THREE.Vector3(30, 1.8, 0)));
+    slewGroup.add(createCable(apexPoint, new THREE.Vector3(-14, 1.8, 0)));
+
+    // ── TROLLEY, HOIST CABLE, HOOK BLOCK & LOAD ──
+    const trolleyGroup = new THREE.Group();
+    slewGroup.add(trolleyGroup);
+
+    // Trolley Body
+    const trolleyBody = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.6, 1.8), darkSteelMat);
+    trolleyBody.castShadow = true;
+    trolleyGroup.add(trolleyBody);
+
+    // Wheels
+    for (let x of [-0.6, 0.6]) {
+      for (let z of [-0.9, 0.9]) {
+        const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.2, 12), yellowSteelMat);
+        wheel.rotation.z = Math.PI / 2;
+        wheel.position.set(x, 0.2, z);
+        trolleyGroup.add(wheel);
+      }
+    }
+
+    // Hoist Cable Line
+    const cableLineGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, -15, 0)]);
+    const cableLine = new THREE.Line(cableLineGeo, new THREE.LineBasicMaterial({ color: 0xe2e8f0, linewidth: 2 }));
+    trolleyGroup.add(cableLine);
+
+    // Suspended Hook & Payload Assembly
+    const payloadGroup = new THREE.Group();
+    slewGroup.add(payloadGroup);
+
+    // Hook Block
+    const hookBlock = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.2, 0.6), yellowSteelMat);
+    hookBlock.castShadow = true;
+    payloadGroup.add(hookBlock);
+
+    // Hook Curve
+    const hookTorus = new THREE.Mesh(new THREE.TorusGeometry(0.35, 0.08, 8, 16, Math.PI * 1.2), darkSteelMat);
+    hookTorus.rotation.z = -Math.PI / 4;
+    hookTorus.position.y = -0.8;
+    payloadGroup.add(hookTorus);
+
+    // Industrial Container Payload
+    const containerGroup = new THREE.Group();
+    containerGroup.position.y = -2.8;
+    payloadGroup.add(containerGroup);
+
+    const contMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.5, metalness: 0.4 });
+    const containerMesh = new THREE.Mesh(new THREE.BoxGeometry(4.8, 2.4, 2.2), contMat);
+    containerMesh.castShadow = true;
+    containerMesh.receiveShadow = true;
+    containerGroup.add(containerMesh);
+
+    // Container Corrugation Trim & Corner Castings
+    const edgeMat = new THREE.MeshStandardMaterial({ color: 0x0369a1, roughness: 0.6 });
+    for (let i = -2; i <= 2; i += 0.8) {
+      const rib = new THREE.Mesh(new THREE.BoxGeometry(0.1, 2.3, 2.24), edgeMat);
+      rib.position.x = i;
+      containerGroup.add(rib);
+    }
+
+    // Sling Rigging Cables (from hook block to container corners)
+    const slingMat = new THREE.LineBasicMaterial({ color: 0x94a3b8 });
+    const cornerOffsets = [[-2.3, 1.2, -1.0], [2.3, 1.2, -1.0], [2.3, 1.2, 1.0], [-2.3, 1.2, 1.0]];
+    cornerOffsets.forEach(pos => {
+      const sGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, -0.6, 0), new THREE.Vector3(pos[0], pos[1] - 2.8, pos[2])]);
+      payloadGroup.add(new THREE.Line(sGeo, slingMat));
+    });
+
+    // ── 3D DYNAMIC WIND PARTICLE FIELD ──
+    const PARTICLE_COUNT = 300;
+    const windParticlesGeo = new THREE.BufferGeometry();
+    const windPositions = new Float32Array(PARTICLE_COUNT * 3);
+    const windVelocities = new Float32Array(PARTICLE_COUNT);
+
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+      windPositions[i * 3] = (Math.random() - 0.5) * 120;
+      windPositions[i * 3 + 1] = Math.random() * 65 + 2;
+      windPositions[i * 3 + 2] = (Math.random() - 0.5) * 120;
+      windVelocities[i] = 0.8 + Math.random() * 0.4;
+    }
+
+    windParticlesGeo.setAttribute('position', new THREE.BufferAttribute(windPositions, 3));
+    const windMat = new THREE.PointsMaterial({
+      color: 0x38bdf8,
+      size: 0.8,
+      transparent: true,
+      opacity: 0.6,
+      blending: THREE.AdditiveBlending
+    });
+    const windParticleField = new THREE.Points(windParticlesGeo, windMat);
+    scene.add(windParticleField);
+
+    // ── 3D WIND VECTOR ARROW ──
+    const windArrowGroup = new THREE.Group();
+    windArrowGroup.position.set(-25, 55, -25);
+    scene.add(windArrowGroup);
+
+    const windCone = new THREE.Mesh(new THREE.ConeGeometry(1.2, 3.0, 12), new THREE.MeshBasicMaterial({ color: 0x38bdf8 }));
+    windCone.rotation.z = -Math.PI / 2;
+    windCone.position.x = 2;
+    windArrowGroup.add(windCone);
+
+    const windShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 4.0, 8), new THREE.MeshBasicMaterial({ color: 0x38bdf8 }));
+    windShaft.rotation.z = Math.PI / 2;
+    windShaft.position.x = -0.5;
+    windArrowGroup.add(windShaft);
+
+    /* =========================================================
+       AUDIO SYSTEM (WEB AUDIO API KLAXON & CHIMES)
+       ========================================================= */
+
+    function initAudio() {
+      if (!audioCtx) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContext();
+      }
+    }
+
+    function playBeep(freq = 600, duration = 0.15, type = "sine") {
+      if (!audioEnabled || !audioCtx) return;
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    let sirenInterval = null;
+    function setHazardSiren(active) {
+      if (!audioEnabled || !audioCtx) return;
+      if (active && !sirenInterval) {
+        sirenInterval = setInterval(() => {
+          playBeep(920, 0.25, "sawtooth");
+        }, 320);
+      } else if (!active && sirenInterval) {
+        clearInterval(sirenInterval);
+        sirenInterval = null;
+      }
+    }
+
+    /* =========================================================
+       PHYSICS CALCULATIONS (MATCHING CRANE_ENV & PHYSICS.PY)
+       ========================================================= */
+
+    function calculateWindForce(velocity) {
+      return 0.5 * AIR_DENSITY * DRAG_COEFFICIENT * EXPOSED_AREA * velocity * Math.abs(velocity);
+    }
+
+    function calculatePendulumAcceleration(angle, velocity, cableLen, mass, force) {
+      const gravityTerm = -(GRAVITY / cableLen) * Math.sin(angle);
+      const dampingTerm = -(0.15 / (mass * cableLen * cableLen)) * velocity;
+      const windTerm = (force / (mass * cableLen)) * Math.cos(angle);
+      return gravityTerm + dampingTerm + windTerm;
+    }
+
+    function physicsStep(dt) {
+      simTime += dt;
+
+      // 1. Wind & Gust Update
+      if (state.isGusting) {
+        state.gustRemainingTime -= dt;
+        if (state.gustRemainingTime <= 0) {
+          state.isGusting = false;
+          state.gustVelocity = 0;
+          document.getElementById('warning-banner').style.display = 'none';
+        }
+      } else {
+        if (Math.random() < state.gustProbability) {
+          state.isGusting = true;
+          state.gustRemainingTime = 1.0 + Math.random() * 2.0;
+          const sign = Math.random() < 0.3 ? -1 : 1;
+          state.gustVelocity = sign * (state.gustMin + Math.random() * (state.gustMax - state.gustMin));
+          document.getElementById('warning-banner').style.display = 'block';
+          playBeep(880, 0.2, "square");
+        }
+      }
+
+      // Mean-reverting wind turbulence (Ornstein-Uhlenbeck style)
+      const noise = (Math.random() - 0.5) * 2 * state.turbulenceStrength * Math.sqrt(dt);
+      state.currentWind += -0.5 * (state.currentWind - state.baseWind) * dt + noise;
+      const effectiveWind = state.currentWind + state.gustVelocity;
+
+      // 2. AI Copilot Active Counter-Steering Intervention
+      state.copilotIntervention = false;
+      if (state.copilotActive && !state.isTipped) {
+        // Calculate prospective margin ratio
+        const currentMarginRatio = state.stabilityMargin / state.restoringMoment;
+
+        if (currentMarginRatio < 0.35 || state.isGusting) {
+          // Emergency inward retraction to reduce load lever arm
+          state.copilotIntervention = true;
+          const retractionSpeed = currentMarginRatio < 0.15 ? 2.5 : 1.2;
+          state.trolleyPos = Math.max(2.0, state.trolleyPos - retractionSpeed * CRANE_PARAMS.trolleySpeed * dt);
+          document.getElementById('copilot-badge').textContent = "INTERVENTION: RETRACTING";
+          document.getElementById('copilot-badge').style.background = "rgba(245, 158, 11, 0.25)";
+          document.getElementById('copilot-badge').style.color = "#fde68a";
+        } else if (Math.abs(state.swingVelocityX) > 0.08) {
+          // Active sway damping: trolley counter-accelerates opposite to swing velocity
+          state.copilotIntervention = true;
+          const swayDampAction = -Math.sign(state.swingVelocityX) * 0.4 * CRANE_PARAMS.trolleySpeed * dt;
+          state.trolleyPos = Math.min(CRANE_PARAMS.boomLength - 2, Math.max(2.0, state.trolleyPos + swayDampAction));
+          document.getElementById('copilot-badge').textContent = "ACTIVE SWAY DAMPING";
+          document.getElementById('copilot-badge').style.background = "rgba(56, 189, 248, 0.25)";
+          document.getElementById('copilot-badge').style.color = "#bae6fd";
+        } else {
+          document.getElementById('copilot-badge').textContent = "MONITORING (STABLE)";
+          document.getElementById('copilot-badge').style.background = "rgba(34, 197, 94, 0.2)";
+          document.getElementById('copilot-badge').style.color = "#86efac";
+        }
+      }
+
+      // 3. Aerodynamic Wind Force
+      const windForce = calculateWindForce(effectiveWind);
+
+      // 4. Pendulum Dynamics (Euler integration)
+      const accelX = calculatePendulumAcceleration(
+        state.swingAngleX,
+        state.swingVelocityX,
+        state.cableLength,
+        state.loadMass,
+        windForce
+      );
+      state.swingVelocityX += accelX * dt;
+      state.swingAngleX += state.swingVelocityX * dt;
+      state.swingAngleX = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, state.swingAngleX));
+
+      // Light lateral swing damping (Y)
+      const accelY = - (GRAVITY / state.cableLength) * Math.sin(state.swingAngleY) - 0.2 * state.swingVelocityY;
+      state.swingVelocityY += accelY * dt;
+      state.swingAngleY += state.swingVelocityY * dt;
+
+      // 5. Moments & Stability Margin
+      const loadHorizontalOffset = state.trolleyPos + state.cableLength * Math.sin(state.swingAngleX);
+      const loadMoment = state.loadMass * GRAVITY * loadHorizontalOffset;
+      const windMoment = windForce * CRANE_PARAMS.height;
+      state.overturningMoment = loadMoment + windMoment;
+      state.restoringMoment = CRANE_PARAMS.craneMass * GRAVITY * (CRANE_PARAMS.baseWidth / 2.0);
+      state.stabilityMargin = state.restoringMoment - Math.abs(state.overturningMoment);
+      state.marginRatio = state.stabilityMargin / state.restoringMoment;
+
+      // 6. Dynamic Structural Mast Tilt (2nd order oscillator)
+      const momentRatio = state.overturningMoment / state.restoringMoment;
+      const targetTilt = Math.max(-0.5, Math.min(0.5, momentRatio * CRANE_PARAMS.maxTargetTilt));
+      const omegaN = CRANE_PARAMS.tiltNaturalFreq;
+      const zeta = CRANE_PARAMS.tiltDamping;
+      const tiltAccel = (omegaN * omegaN) * (targetTilt - state.structuralTilt) - (2.0 * zeta * omegaN * state.tiltRate);
+      state.tiltRate += tiltAccel * dt;
+      state.structuralTilt += state.tiltRate * dt;
+
+      // 7. Status Classification & Tipping Failure
+      if (state.stabilityMargin <= 0.0) {
+        state.status = 'tipping';
+        state.isTipped = true;
+        setHazardSiren(true);
+      } else if (state.marginRatio < 0.10) {
+        state.status = 'critical';
+        setHazardSiren(false);
+        if (Math.floor(simTime * 5) % 2 === 0) playBeep(720, 0.08);
+      } else if (state.marginRatio < 0.25) {
+        state.status = 'warning';
+        setHazardSiren(false);
+      } else {
+        state.status = 'safe';
+        setHazardSiren(false);
+      }
+
+      // Handle structural collapse if tipped
+      if (state.isTipped) {
+        state.collapseProgress = Math.min(1.0, state.collapseProgress + dt * 0.8);
+      } else {
+        state.collapseProgress = 0.0;
+      }
+    }
+
+    /* =========================================================
+       SCENE UPDATES & ANIMATION LOOP
+       ========================================================= */
+
+    function updateVisuals() {
+      // 1. Slewing rotation
+      slewGroup.rotation.y = state.slewAngle;
+
+      // 2. Structural Tilt Deflection
+      if (!state.isTipped) {
+        craneTiltGroup.rotation.z = -state.structuralTilt;
+        craneTiltGroup.position.x = 0;
+      } else {
+        // Dynamic tipping fall over the base edge
+        const fallAngle = -state.structuralTilt - state.collapseProgress * (Math.PI / 2.2);
+        craneTiltGroup.rotation.z = fallAngle;
+      }
+
+      // 3. Trolley Position along boom
+      trolleyGroup.position.set(state.trolleyPos, 0, 0);
+
+      // 4. Suspended Hook & Payload Position
+      const hookX = state.trolleyPos + state.cableLength * Math.sin(state.swingAngleX);
+      const hookY = -state.cableLength * Math.cos(state.swingAngleX);
+      const hookZ = state.cableLength * Math.sin(state.swingAngleY);
+
+      payloadGroup.position.set(hookX, hookY, hookZ);
+      payloadGroup.rotation.z = state.swingAngleX;
+      payloadGroup.rotation.x = state.swingAngleY;
+
+      // Cable Line from trolley to hook
+      const localHook = new THREE.Vector3(hookX - state.trolleyPos, hookY, hookZ);
+      const positions = cableLine.geometry.attributes.position.array;
+      positions[3] = localHook.x;
+      positions[4] = localHook.y;
+      positions[5] = localHook.z;
+      cableLine.geometry.attributes.position.needsUpdate = true;
+
+      // 5. Update Wind Particles
+      const currentEffWind = state.currentWind + state.gustVelocity;
+      const posArr = windParticlesGeo.attributes.position.array;
+      const windSpeedMult = currentEffWind * 0.4;
+
+      for (let i = 0; i < PARTICLE_COUNT; i++) {
+        posArr[i * 3] += windSpeedMult * windVelocities[i] * 0.05;
+        if (posArr[i * 3] > 60) posArr[i * 3] = -60;
+        if (posArr[i * 3] < -60) posArr[i * 3] = 60;
+      }
+      windParticlesGeo.attributes.position.needsUpdate = true;
+
+      // Wind Arrow Indicator
+      windArrowGroup.rotation.y = currentEffWind >= 0 ? 0 : Math.PI;
+      const arrowScale = Math.min(2.5, Math.max(0.5, Math.abs(currentEffWind) / 10));
+      windArrowGroup.scale.set(arrowScale, arrowScale, arrowScale);
+
+      // 6. Camera Follow logic
+      if (currentCameraView === 'hook') {
+        const worldPayloadPos = new THREE.Vector3();
+        containerGroup.getWorldPosition(worldPayloadPos);
+        camera.position.set(worldPayloadPos.x + 18, worldPayloadPos.y + 12, worldPayloadPos.z + 24);
+        controls.target.copy(worldPayloadPos);
+      } else if (currentCameraView === 'cab') {
+        const cabPos = new THREE.Vector3();
+        cabWindow.getWorldPosition(cabPos);
+        camera.position.set(cabPos.x + 0.2, cabPos.y + 0.3, cabPos.z);
+        const lookTarget = new THREE.Vector3();
+        containerMesh.getWorldPosition(lookTarget);
+        controls.target.lerp(lookTarget, 0.1);
+      }
+    }
+
+    /* =========================================================
+       TELEMETRY HUD & DASHBOARD UPDATES
+       ========================================================= */
+
+    const statusBadge = document.getElementById('status-badge');
+    const statusText = document.getElementById('status-text');
+    const valStabilityMargin = document.getElementById('val-stability-margin');
+    const valOverturningMoment = document.getElementById('val-overturning-moment');
+    const valRestoringMoment = document.getElementById('val-restoring-moment');
+    const valWindSpeed = document.getElementById('val-wind-speed');
+    const valWindForce = document.getElementById('val-wind-force');
+    const valSwingAngle = document.getElementById('val-swing-angle');
+    const valSwingRate = document.getElementById('val-swing-rate');
+    const valTiltAngle = document.getElementById('val-tilt-angle');
+    const valExtensionRatio = document.getElementById('val-extension-ratio');
+    const valMomentPct = document.getElementById('val-moment-pct');
+    const momentGaugeFill = document.getElementById('moment-gauge-fill');
+
+    function formatNumber(num) {
+      return Math.round(num).toLocaleString('en-US');
+    }
+
+    function updateHUD() {
+      // Status Badge
+      statusBadge.className = `status-pill ${state.status}`;
+      statusText.textContent = `STATUS: ${state.status.toUpperCase()}`;
+
+      // Numeric cards
+      valStabilityMargin.innerHTML = `${formatNumber(state.stabilityMargin)} <span>N·m</span>`;
+      valOverturningMoment.innerHTML = `${formatNumber(state.overturningMoment)} <span>N·m</span>`;
+      valRestoringMoment.innerHTML = `${formatNumber(state.restoringMoment)} <span>N·m</span>`;
+
+      const effWind = state.currentWind + state.gustVelocity;
+      valWindSpeed.innerHTML = `${effWind.toFixed(2)} <span>m/s</span>`;
+      valWindForce.innerHTML = `${calculateWindForce(effWind).toFixed(1)} <span>N</span>`;
+
+      const swingDeg = (state.swingAngleX * 180 / Math.PI).toFixed(2);
+      valSwingAngle.innerHTML = `${swingDeg}° <span>(${state.swingAngleX.toFixed(3)} rad)</span>`;
+      valSwingRate.innerHTML = `${(state.swingVelocityX * 180 / Math.PI).toFixed(2)}°/s <span>(${state.swingVelocityX.toFixed(3)} rad/s)</span>`;
+
+      const tiltDeg = (state.structuralTilt * 180 / Math.PI).toFixed(2);
+      valTiltAngle.innerHTML = `${tiltDeg}° <span>(${state.structuralTilt.toFixed(3)} rad)</span>`;
+
+      const extPct = (state.trolleyPos / CRANE_PARAMS.boomLength * 100).toFixed(1);
+      valExtensionRatio.innerHTML = `${extPct}% <span>(${state.trolleyPos.toFixed(1)} m)</span>`;
+
+      // Moment Gauge
+      const momentRatioPct = Math.min(100, Math.max(0, (Math.abs(state.overturningMoment) / state.restoringMoment) * 100));
+      valMomentPct.textContent = `${momentRatioPct.toFixed(1)}%`;
+      momentGaugeFill.style.width = `${momentRatioPct}%`;
+
+      if (momentRatioPct > 90) {
+        valMomentPct.style.color = "var(--tipping)";
+        valStabilityMargin.style.color = "var(--tipping)";
+      } else if (momentRatioPct > 75) {
+        valMomentPct.style.color = "var(--warning)";
+        valStabilityMargin.style.color = "var(--warning)";
+      } else {
+        valMomentPct.style.color = "var(--safe)";
+        valStabilityMargin.style.color = "var(--safe)";
+      }
+
+      // Sliders label updates
+      document.getElementById('lbl-trolley').textContent = `${state.trolleyPos.toFixed(1)} m`;
+      document.getElementById('lbl-mass').textContent = `${formatNumber(state.loadMass)} kg`;
+      document.getElementById('lbl-cable').textContent = `${state.cableLength.toFixed(1)} m`;
+      document.getElementById('lbl-slew').textContent = `${(state.slewAngle * 180 / Math.PI).toFixed(1)}°`;
+      document.getElementById('lbl-wind').textContent = `${state.baseWind.toFixed(1)} m/s`;
+      document.getElementById('lbl-turb').textContent = state.turbulenceStrength.toFixed(1);
+      document.getElementById('lbl-gust').textContent = state.gustProbability.toFixed(3);
+    }
+
+    /* =========================================================
+       CANVAS STRIP CHART
+       ========================================================= */
+
+    const chartCanvas = document.getElementById('telemetry-canvas');
+    const chartCtx = chartCanvas.getContext('2d');
+
+    function updateChart() {
+      historyMargin.shift();
+      historyMargin.push(Math.max(0, Math.min(1.0, state.marginRatio)));
+
+      historyMoment.shift();
+      historyMoment.push(Math.min(1.0, Math.abs(state.overturningMoment) / state.restoringMoment));
+
+      const w = chartCanvas.width;
+      const h = chartCanvas.height;
+      chartCtx.clearRect(0, 0, w, h);
+
+      // Grid line at 0.25 (warning) and 0.10 (critical)
+      chartCtx.strokeStyle = '#1e293b';
+      chartCtx.lineWidth = 1;
+      chartCtx.beginPath();
+      chartCtx.moveTo(0, h * 0.25); chartCtx.lineTo(w, h * 0.25);
+      chartCtx.moveTo(0, h * 0.50); chartCtx.lineTo(w, h * 0.50);
+      chartCtx.moveTo(0, h * 0.75); chartCtx.lineTo(w, h * 0.75);
+      chartCtx.stroke();
+
+      // Stability Reserve Line (Cyan)
+      chartCtx.strokeStyle = '#38bdf8';
+      chartCtx.lineWidth = 2;
+      chartCtx.beginPath();
+      for (let i = 0; i < HISTORY_LENGTH; i++) {
+        const x = (i / (HISTORY_LENGTH - 1)) * w;
+        const y = h - (historyMargin[i] * h * 0.9 + 5);
+        if (i === 0) chartCtx.moveTo(x, y);
+        else chartCtx.lineTo(x, y);
+      }
+      chartCtx.stroke();
+
+      // Overturning Ratio Line (Amber)
+      chartCtx.strokeStyle = '#f59e0b';
+      chartCtx.lineWidth = 1.5;
+      chartCtx.beginPath();
+      for (let i = 0; i < HISTORY_LENGTH; i++) {
+        const x = (i / (HISTORY_LENGTH - 1)) * w;
+        const y = h - (historyMoment[i] * h * 0.9 + 5);
+        if (i === 0) chartCtx.moveTo(x, y);
+        else chartCtx.lineTo(x, y);
+      }
+      chartCtx.stroke();
+    }
+
+    /* =========================================================
+       USER INTERACTION & PRESETS
+       ========================================================= */
+
+    let currentCameraView = 'orbit';
+
+    function setCameraView(view) {
+      currentCameraView = view;
+      document.querySelectorAll('.btn-cam').forEach(b => b.classList.remove('active'));
+      event.target.classList.add('active');
+
+      if (view === 'orbit') {
+        controls.enabled = true;
+        camera.position.set(70, 45, 75);
+        controls.target.set(15, 25, 0);
+      } else if (view === 'base') {
+        controls.enabled = true;
+        camera.position.set(16, 6, 16);
+        controls.target.set(0, 3, 0);
+      } else if (view === 'side') {
+        controls.enabled = true;
+        camera.position.set(25, 30, 95);
+        controls.target.set(25, 30, 0);
+      } else if (view === 'top') {
+        controls.enabled = true;
+        camera.position.set(25, 110, 0);
+        controls.target.set(25, 0, 0);
+      } else if (view === 'cab' || view === 'hook') {
+        controls.enabled = false;
+      }
+    }
+
+    function setScenario(scenario) {
+      state.isTipped = false;
+      state.collapseProgress = 0;
+      setHazardSiren(false);
+
+      if (scenario === 'SAFE') {
+        state.trolleyPos = 20.0;
+        state.loadMass = 5000.0;
+        state.baseWind = 5.0;
+        state.currentWind = 5.0;
+        state.turbulenceStrength = 1.5;
+        state.gustProbability = 0.01;
+      } else if (scenario === 'CRITICAL') {
+        state.trolleyPos = 42.0;
+        state.loadMass = 8000.0;
+        state.baseWind = 12.0;
+        state.currentWind = 12.0;
+        state.turbulenceStrength = 3.0;
+        state.gustProbability = 0.02;
+      } else if (scenario === 'GUST') {
+        state.trolleyPos = 35.0;
+        state.loadMass = 7000.0;
+        state.baseWind = 15.0;
+        state.currentWind = 15.0;
+        state.isGusting = true;
+        state.gustRemainingTime = 3.5;
+        state.gustVelocity = 22.0;
+        document.getElementById('warning-banner').style.display = 'block';
+      } else if (scenario === 'TIPPING') {
+        state.trolleyPos = 48.0;
+        state.loadMass = 18000.0;
+        state.baseWind = 28.0;
+        state.currentWind = 28.0;
+        state.isGusting = true;
+        state.gustRemainingTime = 6.0;
+        state.gustVelocity = 35.0;
+        state.copilotActive = false; // Disable copilot to witness tipping collapse
+        document.getElementById('copilot-toggle').className = "copilot-toggle";
+        document.getElementById('copilot-badge').textContent = "OVERRIDDEN (DISABLED)";
+        document.getElementById('copilot-badge').style.background = "rgba(239, 68, 68, 0.2)";
+        document.getElementById('copilot-badge').style.color = "#fca5a5";
+      }
+
+      // Sync slider inputs
+      document.getElementById('sl-trolley').value = state.trolleyPos;
+      document.getElementById('sl-mass').value = state.loadMass;
+      document.getElementById('sl-wind').value = state.baseWind;
+      document.getElementById('sl-turb').value = state.turbulenceStrength;
+      document.getElementById('sl-gust').value = state.gustProbability;
+
+      playBeep(440, 0.1);
+    }
+
+    function toggleCopilot() {
+      state.copilotActive = !state.copilotActive;
+      const toggle = document.getElementById('copilot-toggle');
+      if (state.copilotActive) {
+        toggle.className = "copilot-toggle on";
+        document.getElementById('copilot-desc').textContent = "Autonomous counter-steering active. Monitored stability reserve & anti-sway trolley modulation.";
+        document.getElementById('copilot-badge').textContent = "MONITORING (ACTIVE)";
+        document.getElementById('copilot-badge').style.background = "rgba(34, 197, 94, 0.2)";
+        document.getElementById('copilot-badge').style.color = "#86efac";
+      } else {
+        toggle.className = "copilot-toggle";
+        document.getElementById('copilot-desc').textContent = "Copilot disabled. Crane operates under direct open-loop manual slider control.";
+        document.getElementById('copilot-badge').textContent = "STANDBY (OFF)";
+        document.getElementById('copilot-badge').style.background = "rgba(148, 163, 184, 0.2)";
+        document.getElementById('copilot-badge').style.color = "#cbd5e1";
+      }
+      playBeep(state.copilotActive ? 800 : 350, 0.1);
+    }
+
+    function onSliderChange(param, value) {
+      const val = parseFloat(value);
+      if (param === 'trolley') state.trolleyPos = val;
+      else if (param === 'mass') state.loadMass = val;
+      else if (param === 'cable') state.cableLength = val;
+      else if (param === 'slew') state.slewAngle = val * Math.PI / 180;
+      else if (param === 'wind') { state.baseWind = val; state.currentWind = val; }
+      else if (param === 'turb') state.turbulenceStrength = val;
+      else if (param === 'gust') state.gustProbability = val;
+    }
+
+    // Header Actions
+    document.getElementById('btn-pause').addEventListener('click', () => {
+      isPaused = !isPaused;
+      document.getElementById('pause-icon').textContent = isPaused ? '▶️' : '⏸️';
+      document.getElementById('btn-pause').innerHTML = `<span id="pause-icon">${isPaused ? '▶️' : '⏸️'}</span> ${isPaused ? 'Resume' : 'Pause'}`;
+    });
+
+    document.getElementById('btn-reset').addEventListener('click', () => {
+      setScenario('SAFE');
+      state.swingAngleX = 0;
+      state.swingVelocityX = 0;
+      state.swingAngleY = 0;
+      state.swingVelocityY = 0;
+      state.structuralTilt = 0;
+      state.tiltRate = 0;
+      state.isTipped = false;
+      state.collapseProgress = 0;
+    });
+
+    document.getElementById('btn-sound').addEventListener('click', () => {
+      initAudio();
+      audioEnabled = !audioEnabled;
+      document.getElementById('sound-icon').textContent = audioEnabled ? '🔊' : '🔇';
+      document.getElementById('btn-sound').innerHTML = `<span id="sound-icon">${audioEnabled ? '🔊' : '🔇'}</span> Siren ${audioEnabled ? 'On' : 'Muted'}`;
+    });
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    window.addEventListener('click', () => {
+      initAudio();
+    }, { once: true });
+
+    /* =========================================================
+       MAIN RENDER / SIMULATION TICK
+       ========================================================= */
+
+    let lastTime = performance.now();
+    let chartCounter = 0;
+
+    function animate(currentTime) {
+      requestAnimationFrame(animate);
+
+      const deltaMs = currentTime - lastTime;
+      lastTime = currentTime;
+
+      if (!isPaused) {
+        physicsStep(DT);
+      }
+
+      updateVisuals();
+      updateHUD();
+
+      chartCounter++;
+      if (chartCounter % 3 === 0) {
+        updateChart();
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    // Start Simulation
+    animate(performance.now());
+  </script>
+</body>
+</html>

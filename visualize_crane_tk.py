@@ -74,6 +74,71 @@ class CraneVisualizer:
         ).pack(side="left", padx=20)
 
         # ---------------------------------------------
+        # Live parameter controls
+        # ---------------------------------------------
+        self.parameter_frame = tk.Frame(
+            root,
+            bg="#273746",
+            pady=5
+        )
+        self.parameter_frame.pack(fill="x")
+
+        self.control_values = {}
+        controls = [
+            ("Load kg", "load_mass", 1000, 20000, 5000),
+            ("Trolley m", "trolley_position", 0, 50, 20),
+            ("Base wind", "base_wind", -30, 30, 5),
+            ("Turbulence", "turbulence_strength", 0, 10, 1.5),
+            ("Gust chance", "gust_probability", 0, 0.1, 0.01),
+            ("Gust max", "gust_max", 0, 50, 20),
+            ("Height m", "crane_height", 10, 80, 50),
+            ("Boom m", "boom_length", 10, 80, 50),
+            ("Cable m", "cable_length", 2, 30, 15),
+            ("Trolley speed", "trolley_speed", 0.1, 5, 0.5),
+            ("Trolley ctl", "action", -1, 1, 0),
+        ]
+
+        for column, (label, key, minimum, maximum, value) in enumerate(controls):
+            frame = tk.Frame(self.parameter_frame, bg="#273746")
+            frame.grid(row=column // 6, column=column % 6, padx=3)
+            tk.Label(
+                frame,
+                text=label,
+                bg="#273746",
+                fg="#D5DBDB",
+                font=("Segoe UI", 8)
+            ).pack()
+            resolution = 0.01 if key in {"turbulence_strength", "gust_probability"} else 0.1
+            if key in {"load_mass", "trolley_position", "boom_length", "cable_length"}:
+                resolution = 1
+            scale = tk.Scale(
+                frame,
+                from_=minimum,
+                to=maximum,
+                resolution=resolution,
+                orient="horizontal",
+                length=105,
+                showvalue=True,
+                variable=tk.DoubleVar(value=value),
+                bg="#273746",
+                fg="white",
+                troughcolor="#566573",
+                highlightthickness=0
+            )
+            scale.pack()
+            self.control_values[key] = scale
+
+        tk.Button(
+            self.parameter_frame,
+            text="APPLY",
+            command=self.apply_parameters,
+            bg="#148F77",
+            fg="white",
+            font=("Segoe UI", 9, "bold"),
+            width=9
+        ).grid(row=1, column=6, padx=8, pady=12)
+
+        # ---------------------------------------------
         # Canvas
         # ---------------------------------------------
         self.canvas = tk.Canvas(
@@ -113,6 +178,27 @@ class CraneVisualizer:
         self.origin_y = 650
 
         self.update_animation()
+
+    def apply_parameters(self):
+        """Apply the live controls and restart the current episode."""
+        self.env.crane_height = float(self.control_values["crane_height"].get())
+        self.env.boom_length = float(self.control_values["boom_length"].get())
+        self.env.cable_length = float(self.control_values["cable_length"].get())
+        self.env.trolley_speed = float(self.control_values["trolley_speed"].get())
+        self.env.wind_model.base_wind = float(self.control_values["base_wind"].get())
+        self.env.wind_model.turbulence_strength = float(self.control_values["turbulence_strength"].get())
+        self.env.wind_model.gust_probability = float(self.control_values["gust_probability"].get())
+        self.env.wind_model.gust_max = float(self.control_values["gust_max"].get())
+        self.action[0] = float(self.control_values["action"].get())
+
+        self.env.reset(seed=42)
+        self.env.state[0] = float(self.control_values["trolley_position"].get())
+        self.env.state[1] = float(self.control_values["load_mass"].get())
+        self.env.state[2] = self.env.wind_model.base_wind
+        self.obs = self.env.state.copy()
+        self.info = {}
+        self.current_scenario = "CUSTOM"
+        self.paused = False
 
 
     def world_to_screen(self, x, y):
